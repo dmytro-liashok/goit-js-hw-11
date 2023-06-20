@@ -1,0 +1,22 @@
+.gallery {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin-right: auto;
+  margin-left: auto;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.info {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.photo-card {
+  border: 2px solid rgba(157, 164, 189, 0.6);
+  justify-content: center;
+  max-width: 660px;
+}

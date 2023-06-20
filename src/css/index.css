@@ -1,0 +1,6 @@
+@import './form.css';
+@import './list.css';
+
+.hidden {
+  display: none;
+}
