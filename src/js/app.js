@@ -3,18 +3,23 @@ import Notiflix from 'notiflix';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
 import throttle from 'lodash.throttle';
+import simpleLightbox from 'simplelightbox';
 
 const searchQueryEl = document.querySelector('[name="searchQuery"]');
 const submitBtnEl = document.querySelector('[type="submit"]');
 const galleryEl = document.querySelector('.gallery');
-const loadMoreBtnEl = document.querySelector('.load-more');
+
 let page = 1;
-let perPage = 40;
+let perPage = 100;
 let isEndOfCollection = false;
+let gallery;
+
+let scrollHandler = throttle(infityScroll, 500);
 
 submitBtnEl.addEventListener('click', clickOnSubmit);
 
 function clickOnSubmit(e) {
+  page = 1;
   e.preventDefault();
   const valueInputUser = searchQueryEl.value;
   galleryEl.innerHTML = '';
@@ -22,24 +27,62 @@ function clickOnSubmit(e) {
   fetchHits(valueInputUser, page, perPage)
     .then(responData => {
       if (valueInputUser.trim() === '' || responData.total === 0) {
-        Notiflix.Notify.failure(
-          'Sorry, there are no images matching your search query. Please try again.'
-        );
+        notifErorNoImages();
         return;
       }
 
-      markupGallery(responData.hits);
-      let gallery = new SimpleLightbox('.gallery a');
-      window.addEventListener('scroll', throttle(infityScroll, 500));
+      buildGalery(responData.hits);
 
       Notiflix.Notify.success(
         `Hooray! We found ${responData.totalHits} images.`
       );
+      isEndOfCollection = false;
+      window.addEventListener('scroll', scrollHandler);
     })
     .catch(error => {
-      Notiflix.Notify.failure(
-        'Oops! Something went wrong! Try reloading the page!'
-      );
+      notifErrorApi();
+    });
+}
+
+function infityScroll() {
+  const endOfPage =
+    window.innerHeight + window.pageYOffset >= document.body.offsetHeight;
+
+  if (endOfPage && isEndOfCollection) {
+    Notiflix.Notify.failure(
+      "We're sorry, but you've reached the end of search results."
+    );
+    window.removeEventListener('scroll', scrollHandler);
+    return;
+  }
+
+  if (!endOfPage) {
+    return;
+  }
+
+  page += 1;
+
+  const valueInputUser = searchQueryEl.value;
+
+  fetchHits(valueInputUser, page, perPage)
+    .then(responData => {
+      if (valueInputUser.trim() === '' || responData.totalHits === 0) {
+        notifErorNoImages();
+        return;
+      }
+      if (gallery) {
+        gallery.destroy();
+      }
+
+      buildGalery(responData.hits);
+
+      if (responData.totalHits <= galleryEl.childElementCount) {
+        isEndOfCollection = true;
+        return;
+      }
+    })
+    .catch(error => {
+      notifErrorApi();
     });
 }
 
@@ -69,46 +112,19 @@ function markupGallery(arrayHits) {
   galleryEl.insertAdjacentHTML('beforeend', strHTML);
 }
 
-function infityScroll() {
-  if (isEndOfCollection) {
-    return;
-  }
+function notifErrorApi() {
+  Notiflix.Notify.failure(
+    'Oops! Something went wrong! Try reloading the page!'
+  );
+}
 
-  const endOfPage =
-    window.innerHeight + window.pageYOffset >= document.body.offsetHeight;
+function notifErorNoImages() {
+  Notiflix.Notify.failure(
+    'Sorry, there are no images matching your search query. Please try again.'
+  );
+}
 
-  if (!endOfPage) {
-    return;
-  }
-  page += 1;
-
-  const valueInputUser = searchQueryEl.value;
-
-  fetchHits(valueInputUser, page, perPage)
-    .then(responData => {
-      if (valueInputUser.trim() === '' || responData.totalHits === 0) {
-        Notiflix.Notify.failure(
-          'Sorry, there are no images matching your search query. Please try again.'
-        );
-        return;
-      }
-
-      markupGallery(responData.hits);
-
-      if (responData.totalHits <= galleryEl.childElementCount) {
-        isEndOfCollection = true;
-        window.removeEventListener('scroll', throttle(infityScroll, 500));
-        Notiflix.Notify.failure(
-          "We're sorry, but you've reached the end of search results."
-        );
-        return;
-      }
-      window.addEventListener('scroll', throttle(infityScroll, 500));
-      let gallery = new SimpleLightbox('.gallery a');
-    })
-    .catch(error => {
-      Notiflix.Notify.failure(
-        'Oops! Something went wrong! Try reloading the page!'
-      );
-    });
+function buildGalery(dataHits) {
+  markupGallery(dataHits);
+  gallery = new SimpleLightbox('.gallery a');
 }
